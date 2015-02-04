@@ -1,0 +1,97 @@
+* {
+	font-family: "Arial",sans-serif;
+}
+
+.calendar {
+	width: 400px;
+	margin: 20px;
+}
+
+.calendar .container {
+	width:100%;
+	box-sizing: border-box;
+	border-spacing:0;
+	border-collapse: collapse;
+	text-align: right;
+	color: #999;
+	table-layout:fixed;
+}
+
+.calendar .day, .calendar .weekdays > * {
+	padding:4px;
+}
+
+.calendar .header {
+	font-size: 130%;
+	text-align: center;
+	text-transform: capitalize;
+}
+
+.calendar .weekdays > * {
+	border-bottom:1px solid #BBB;
+}
+
+.calendar .day {
+	height: 60px;
+	vertical-align: top;
+	border:1px solid #DDD;
+}
+
+.calendar .week > .day.today {
+	-webkit-box-shadow: inset 0 0 4px 0 #518dcb;
+	-moz-box-shadow: inset 0 0 4px 0 #518dcb;
+	box-shadow: inset 0 0 4px 0 #518dcb;
+}
+
+.calendar .day a {
+	color:inherit;
+	text-decoration: none;
+	display:block;
+	height:100%;
+	width:100%;
+}
+
+.calendar .day a.day-url {
+	color:inherit;
+	text-decoration: none;
+	display:block;
+	height:auto;
+	width:100%;
+}
+
+.calendar .day.has-events {
+	/*background-color: #C3DEFA !important;*/ /* Uncomment to highlight days with events*/
+	color: black;
+}
+
+.calendar .day .event {
+	font-size: 70%;
+	background-color: #3d4a4e;
+	color:white;
+	margin-top:4px;
+	padding: 2px;
+	text-align: left;
+}
+
+.calendar .day .event .title {
+	white-space: nowrap;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+}
+
+.calendar .day .event .time {
+	font-size:85%;
+	margin-top:1px;
+	white-space: nowrap;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	opacity: 0.5;
+}
+
+.calendar .day.special-day {
+	background:#EEE;
+}
+
+.calendar .day.wd-6, .calendar .day.wd-7 {
+	background:#EEE;
+}
