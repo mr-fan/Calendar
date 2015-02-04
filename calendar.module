@@ -1,0 +1,368 @@
+<?php
+/**
+ * Calendar for ProcessWire
+ *
+ * Stores events and other dates for a calendar and provides methods to render it.
+ *
+ * Can store events for multiple months. To render multiple months,
+ * use setMonth() to change the month that needs to be rendered, then
+ * use render(). Repeat this as necessary.
+ *
+ * ===============================================================================
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Pierre-Luc Auclair
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+class Calendar /*implements Module*/ {
+
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => "Calendar",
+			'summary' => "Finds a best match between visitor's language and redirects.",
+			'author' => 'Pierre-Luc Auclair',
+			'version' => 001,
+			'singular' => false,
+			'autoload' => false,
+		);
+	}
+
+
+	/**
+	 * Default values for the calendar and the render function
+	 */
+	public function __construct() {
+		$this->events = array();
+		$this->specialDays = array();
+
+		$this->month = new DateTime();
+		$this->displayEvents = true;
+		$this->displayEventsTime = true;
+		$this->displayWeekdays = true;
+
+		$this->dayUrls = null;
+
+		$this->containerElement = "table";
+		$this->weekElement = "tr";
+		$this->dayElement = "td";
+	}
+
+
+	/**
+	 * Set the calendar's month to display. If no parameter is passed, will default to the current month.
+	 *
+	 * @param string $date String formatted a date. See PHP's DateTime class docs.
+	 */
+	public function setMonth($date) {
+		$this->month = new DateTime($date);
+	}
+
+	/**
+	 * Enables or disables the display of events in the calendar.
+	 *
+	 * Note: this does not disable the .has_events class when
+	 * the calendar finds one or more events for a given date.
+	 *
+	 * @param boolean $boolean Default is true
+	 */
+	public function displayEvents($boolean = true) {
+		$this->displayEvents = $boolean;
+	}
+
+
+	/**
+	 * Sets which element should be used for the calendar container
+	 *
+	 * @param string $element Default is table
+	 */
+	public function setContainerElement($element = "table") {
+		$this->containerElement = $element;
+	}
+
+
+	/**
+	 * Sets which element should be used for weeks
+	 *
+	 * @param string $element
+	 */
+	public function setWeekElement($element = "tr") {
+		$this->weekElement = $element;
+	}
+
+
+	/**
+	 * Sets which element should be used for weeks
+	 *
+	 * @param string $element
+	 */
+	public function setDayElement($element = "td") {
+		$this->dayElement = $element;
+	}
+
+
+	/**
+	 * Enables or disables the weekday row in the calendar.
+	 *
+	 * @param boolean $boolean Default is true
+	 */
+	public function displayWeekdays($boolean = true) {
+		$this->displayWeekdays = ($boolean);
+	}
+
+	/**
+	 * Returns a localized array (mon...sun) or a localized string (mon) for weekdays.
+	 *
+	 * Note: make sure setlocale() is set and is using a valid language.
+	 *
+	 * @param string $length Use "short" (default) to use %a (Mon) or "long" to use %A (Monday).
+	 * @param null|int $weekday null (default) to get an array with all weekdays, or from 1 to 7 to get a given name.
+	 * @return array|string Depending on $weekday's value, will either return an array or a string. IMPORTANT: The array starts at 1, not 0.
+	 */
+	public function getWeekdays($weekday=null, $length="short") {
+		// create weekday array in current locale or return day name
+		if ($length == "long") {
+			$length = "%A";
+		} else {
+			$length = "%a";
+		}
+
+		if (!is_null($weekday)) {
+			$weekday = intval($weekday);
+		}
+
+		$localizedWeekdays = array();
+		for( $i = 0; $i < 7; $i++ ) {
+			$localizedWeekdays[$i+1] = strftime( $length, strtotime( 'next Monday +' . $i . ' days' ) );
+		}
+
+		if (is_int($weekday) and $weekday >=1 and $weekday <=7) {
+			return (string) $localizedWeekdays[$weekday];
+		} else {
+			return $localizedWeekdays;
+		}
+	}
+
+
+	/**
+	 * Returns a localized array (Jan...Dec) or a localized string (Jan) for months.
+	 *
+	 * Note: make sure setlocale() is set and is using a valid language.
+	 *
+	 * @param string $length Use "long" (default) to use %B (January) or "short" to use %b (Jan).
+	 * @param null|int $month null (default) to get an array with all months, or from 1 to 12 to get a given name.
+	 * @return array|string Depending on $month's value, will either return an array or a string. IMPORTANT: The array starts at 1, not 0.
+	 */
+	public function getMonths($month=null, $length="long") {
+		if ($length == "short") {
+			$length = "%b";
+		} else {
+			$length = "%B";
+		}
+
+		if (!is_null($month)) {
+			$month = intval($month);
+		}
+
+		$localizedMonths = array();
+		for( $i = 0; $i < 12; $i++ ) {
+			$localizedMonths[$i+1] = strftime( $length, strtotime( 'January 1 +' . $i . ' months' ) );
+		}
+		
+		if (is_int($month) and $month >=1 and $month <=12) {
+			return (string) $localizedMonths[$month];
+		} else {
+			return $localizedMonths;	
+		}
+	}
+
+	// TODO: Document this!
+	public function addEvent($params, $title = null, $from = null, $to = null, $url = null ) {
+		$date = $params;
+
+		if (!isset($this->events[$date]) ) { //$this events is an array of arrays
+			$this->events[$date] = array();
+		}
+		array_push($this->events[$date], array("title" => $title, "from" => $from, "to" => $to, "url" => $url));
+
+	}
+
+	// TODO: Document this!
+	public function addSpecialDay($params, $class = null) {
+		// add special days to the special days array
+		if (is_array($params)) {
+			$date = (array_key_exists("date",$params) ? $params["date"] : null);
+			$class = (array_key_exists("class",$params) ? $params["class"] : null);
+			$background = (array_key_exists("background",$params) ? $params["background"] : null);
+		} else {
+			$date = $params;
+			// $class already defined, so no need to redefine
+			$background = null;
+		}
+		$this->specialDays[$date] = array("class" => $class,"background" => $background);
+	}
+
+
+	// TODO: Document this!
+	private function setLink($string, $date) {
+		$pattern     = array(
+			'/\[\[Y\]\]/', // Year: 2015
+			'/\[\[y\]\]/', // Year: 15
+
+			'/\[\[B\]\]/', // Month: January (localized)
+			'/\[\[b\]\]/', // Month: Jan (localized)
+			'/\[\[m\]\]/', // Month: 01
+			'/\[\[n\]\]/', // Month: 1
+
+			'/\[\[A\]\]/', // Day: Monday (localized)
+			'/\[\[a\]\]/', // Day: Mon (localized)
+			'/\[\[d\]\]/', // Day: 01
+			'/\[\[e\]\]/'  // Day: 1
+		);
+
+		$replacement = array(
+			$date->format("Y"),
+			$date->format("y"),
+
+			strtolower($this->getMonths($date->format("n"),"long")),
+			strtolower($this->getMonths($date->format("n"),"short")),
+			$date->format("m"),
+			$date->format("n"),
+
+			strtolower($this->getWeekdays($date->format("N"),"long")),
+			strtolower($this->getWeekdays($date->format("N"),"short")),
+			$date->format("d"),
+			$date->format("j")
+		);
+		return preg_replace($pattern, $replacement, $string);
+	}
+
+	/**
+	 * Returns formatted HTML for the calendar
+	 *
+	 * @return string
+	 */
+	public function render() {
+		// render the calendar
+		$currentDate = new DateTime(); // store current day
+		$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $this->month->format("m"), $this->month->format("Y"));
+		
+		$out = "<div class=\"calendar\">";
+		$out .= "<div class=\"header\">" . $this->getMonths($this->month->format("n")) . $this->month->format(" Y") . "</div>";
+		
+		$date = new DateTime($this->month->format("Y-m-01"));
+		$weekdayOfWeek = (int) $date->format("N");
+		
+		$out .= "<{$this->containerElement} class=\"container\">";
+
+		// add weekdays on top
+		if ($this->displayWeekdays == true) {
+			$out .= "<{$this->weekElement} class=\"weekdays\">";
+			$localizedWeekdays = $this->getWeekdays(null,"short");
+			foreach ($localizedWeekdays as $weekday) {
+				$out .= "<{$this->dayElement}>{$weekday}</{$this->dayElement}>";
+			}
+			$out .= "</{$this->weekElement}>";
+		}
+		
+		// add empty cells for days of prior month
+		$out .= "<{$this->weekElement}>";
+		for ($weekday = 1; $weekday < $weekdayOfWeek; $weekday++) {
+			$out .= "<{$this->dayElement}></{$this->dayElement}>";
+		}
+		
+		// create the calendar
+		for ($dayNum = 1; $dayNum <= $daysInMonth; $dayNum++) {
+			$day = $date->format("Y-m-d");
+			if ($weekdayOfWeek % 7 === 1) {
+				$out .= "<{$this->weekElement} class=\"week\">";
+			}
+
+			// is the current date today? if so prepare the class name
+			$today = ($day == $currentDate->format("Y-m-d") ? "today" : null);
+
+			// different classes and formatting helpers
+			if (array_key_exists($day,$this->specialDays)) {
+				$specialDay = "special-day";
+				$specialDayClass = $this->specialDays[$date->format("Y-m-d")]["class"];
+				if (isset($this->specialDays[$date->format("Y-m-d")]["background"])) {
+					$specialDayBackground = "style=\"background-color:" . $this->specialDays[$date->format("Y-m-d")]["background"] . "\"";
+				} else {
+					$specialDayBackground ="";
+				}
+			} else {
+				$specialDay = "";
+				$specialDayClass = "";
+				$specialDayBackground = "";
+			}
+
+			$hasEvents = (array_key_exists($day,$this->events) ? "has-events" : null);
+
+			$out .= "<{$this->dayElement} class=\"day {$today} wd-{$weekdayOfWeek} {$specialDay} {$specialDayClass} {$hasEvents}\" {$specialDayBackground}>";
+
+			if (!empty($this->dayUrls)) {
+				$out .= "<a class=\"day-url\" href=\"" . $this->setLink($this->dayUrls,$date) . "\">";
+			}
+			$out .= "<div class=\"date\">" . $date->format("j") . "</div>";
+			if (!empty($this->dayUrls)) {
+				$out .= "</a>";
+			}
+			// The event rendering loop
+			if (array_key_exists($day,$this->events) and $this->displayEvents == true) {
+				foreach ($this->events[$day] as $event) {
+					if (isset($event["url"])) {
+						$out .= "<a href=\"" . $this->setLink($event["url"],$date) . "\">";
+					}
+					$out .= "<div class=\"event\" title=\"{$event["title"]}\">"
+						. "<div class=\"title\">"
+						. $event["title"]
+						. "</div>"
+						. "<div class=\"time\">";
+					if (isset($event["from"]) and $this->displayEventsTime == true) {
+						$out .= $event["from"];
+						$out .= (isset($event["to"]) ? "&ndash;" . $event["to"] : null);
+					}
+					$out .= "</div>"
+						. "</div>";
+					if (isset($event["url"])) {
+						$out .= "</a>";
+					}
+				}
+			}
+
+			$out .= "</{$this->dayElement}>";
+
+			if ($weekdayOfWeek % 7 === 0) {
+				$out .= "</{$this->weekElement}>";
+			}
+			
+			// increment days
+			if ($weekdayOfWeek == 7) {
+				$weekdayOfWeek = 1;
+			} else {
+				$weekdayOfWeek++;
+			}
+			$date->add(new DateInterval("P1D"));
+		}
+		return $out . "</{$this->containerElement}></div>";
+	}
+}
